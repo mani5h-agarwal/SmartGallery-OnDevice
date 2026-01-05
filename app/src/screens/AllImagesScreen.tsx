@@ -2,11 +2,10 @@ import Feather from "@expo/vector-icons/Feather";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Dimensions,
   FlatList,
   Image,
@@ -19,6 +18,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../components/AppHeader";
+import { useTheme } from "../context/ThemeContext";
 import { getIndexedPhotoIds, initDB, saveEmbedding } from "../db/embeddings";
 import { getEmbedding } from "../services/embedding";
 import getPhotos from "../services/media";
@@ -28,6 +29,12 @@ type NavigationProp = NativeStackNavigationProp<any>;
 
 type Props = {
   navigation: NavigationProp;
+  route?: {
+    params?: {
+      albumId?: string;
+      albumTitle?: string;
+    };
+  };
 };
 
 type PhotoItem = {
@@ -35,79 +42,6 @@ type PhotoItem = {
   uri: string;
   indexed?: boolean;
   selected?: boolean;
-};
-
-// Header Component
-const Header = ({ colorTheme, onToggleTheme, onCameraPress }) => {
-  const rotation = useRef(new Animated.Value(0)).current;
-
-  const rotateIcon = () => {
-    Animated.timing(rotation, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
-      rotation.setValue(0);
-    });
-  };
-
-  const spin = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-
-  const handlePress = () => {
-    rotateIcon();
-    onToggleTheme();
-  };
-
-  return (
-    <View style={styles.header}>
-      <Text
-        style={[
-          styles.heading,
-          { color: colorTheme === "light" ? "#000" : "#fff" },
-        ]}
-      >
-        SmartGallery
-      </Text>
-      <View style={styles.headerButtons}>
-        <TouchableOpacity onPress={onCameraPress} style={styles.cameraButton}>
-          <View
-            style={[
-              styles.iconBorder,
-              {
-                backgroundColor: colorTheme === "light" ? "#f0f0f0" : "#333",
-              },
-            ]}
-          >
-            <Feather
-              name="camera"
-              size={18}
-              color={colorTheme === "light" ? "#000" : "#fff"}
-            />
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handlePress}>
-          <Animated.View
-            style={[
-              styles.iconBorder,
-              {
-                backgroundColor: colorTheme === "light" ? "#f0f0f0" : "#333",
-                transform: [{ rotate: spin }],
-              },
-            ]}
-          >
-            {colorTheme === "light" ? (
-              <Feather name="sun" size={18} color="#000" />
-            ) : (
-              <Feather name="moon" size={18} color="#fff" />
-            )}
-          </Animated.View>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
 };
 
 // Selection Header Component
@@ -118,7 +52,7 @@ const SelectionHeader = ({
   onCancel,
   onToggleSelectAll,
   onUpload,
-}) => {
+}: any) => {
   return (
     <View style={styles.selectionHeader}>
       <TouchableOpacity onPress={onCancel} style={styles.button}>
@@ -171,7 +105,7 @@ const UploadProgress = ({
   totalToUpload,
   uploadProgress,
   colorTheme,
-}) => {
+}: any) => {
   if (isUploading) {
     return (
       <View style={styles.uploadProgressContainer}>
@@ -208,18 +142,22 @@ const UploadProgress = ({
           // textAlign: "center",
         }}
       >
-        Long press on any photo to select it for upload
+        Long press on any photo to select it for indexing
       </Text>
     </View>
   );
 };
 
-export default function HomeScreen({ navigation }: Props) {
+export default function AllImagesScreen({ navigation, route }: Props) {
+  const albumId = route?.params?.albumId;
+  const albumTitle = route?.params?.albumTitle;
+  const isAlbumView = !!albumId;
+
+  const { theme: colorTheme, toggleTheme } = useTheme();
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [indexing, setIndexing] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [indexProgress, setIndexProgress] = useState({ current: 0, total: 0 });
-  const [colorTheme, setColorTheme] = useState("light");
   const [selectAll, setSelectAll] = useState(false);
   const [processingCamera, setProcessingCamera] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -231,7 +169,19 @@ export default function HomeScreen({ navigation }: Props) {
   useEffect(() => {
     async function loadPhotos() {
       try {
-        const assets = await getPhotos(2000);
+        let assets;
+        if (isAlbumView && albumId) {
+          const result = await MediaLibrary.getAssetsAsync({
+            album: albumId,
+            first: 2000,
+            mediaType: MediaLibrary.MediaType.photo,
+            sortBy: MediaLibrary.SortBy.creationTime,
+          });
+          assets = result.assets;
+        } else {
+          assets = await getPhotos(2000);
+        }
+
         const indexedIds = getIndexedPhotoIds();
         setPhotos(
           assets.map((a) => ({
@@ -246,7 +196,8 @@ export default function HomeScreen({ navigation }: Props) {
       }
     }
     loadPhotos();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [albumId]);
 
   useEffect(() => {
     if (photos.filter((p) => p.selected).length === 0) {
@@ -332,14 +283,22 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }
 
-  const toggleTheme = () => {
-    setColorTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
-
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const assets = await getPhotos(2000);
+      let assets;
+      if (isAlbumView && albumId) {
+        const result = await MediaLibrary.getAssetsAsync({
+          album: albumId,
+          first: 2000,
+          mediaType: MediaLibrary.MediaType.photo,
+          sortBy: MediaLibrary.SortBy.creationTime,
+        });
+        assets = result.assets;
+      } else {
+        assets = await getPhotos(2000);
+      }
+
       const indexedIds = getIndexedPhotoIds();
       setPhotos(
         assets.map((a) => ({
@@ -429,6 +388,7 @@ export default function HomeScreen({ navigation }: Props) {
         styles.container,
         { backgroundColor: colorTheme === "light" ? "#fff" : "#000" },
       ]}
+      edges={["top"]}
     >
       <StatusBar
         backgroundColor={colorTheme === "light" ? "#fff" : "#000"}
@@ -445,8 +405,35 @@ export default function HomeScreen({ navigation }: Props) {
             onToggleSelectAll={toggleSelectAllHandler}
             onUpload={uploadSelectedPhotos}
           />
+        ) : isAlbumView ? (
+          <View style={styles.albumHeader}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={styles.backBtn}
+            >
+              <Text
+                style={[
+                  styles.backText,
+                  { color: colorTheme === "light" ? "#1a73e8" : "#5e9eff" },
+                ]}
+              >
+                ←
+              </Text>
+            </Pressable>
+            <Text
+              style={[
+                styles.albumHeading,
+                { color: colorTheme === "light" ? "#000" : "#fff" },
+              ]}
+              numberOfLines={1}
+            >
+              {albumTitle}
+            </Text>
+            <View style={{ width: 36 }} />
+          </View>
         ) : (
-          <Header
+          <AppHeader
+            title="SmartGallery"
             colorTheme={colorTheme}
             onToggleTheme={toggleTheme}
             onCameraPress={handleCameraPress}
@@ -520,7 +507,7 @@ export default function HomeScreen({ navigation }: Props) {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor={colorTheme === "light" ? "#536AF5" : "#536AF5"}
+                progressBackgroundColor={colorTheme === "light" ? "#ffffff" : "#000000"}
                 colors={["#536AF5"]}
               />
             }
@@ -529,7 +516,7 @@ export default function HomeScreen({ navigation }: Props) {
       )}
 
       {/* Camera Processing Overlay */}
-      {processingCamera && (
+      {!isAlbumView && processingCamera && (
         <View style={styles.processingOverlay}>
           <View style={styles.processingModal}>
             <ActivityIndicator size="large" color="#536AF5" />
@@ -552,35 +539,34 @@ const styles = StyleSheet.create({
   headerContainer: {
     paddingBottom: 10,
   },
-  header: {
+  albumHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 15,
-    paddingTop: 15,
+    paddingTop: 20,
+    paddingBottom: 8,
   },
-  heading: {
-    fontSize: 22,
-    fontWeight: "bold",
+  albumHeading: {
+    fontSize: 18,
+    fontWeight: "600",
+    flex: 1,
+    textAlign: "center",
   },
-  headerButtons: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  cameraButton: {
-    marginRight: 0,
-  },
-  iconBorder: {
-    padding: 10,
-    borderRadius: 20,
+  backBtn: {
+    width: 36,
+    height: 36,
     justifyContent: "center",
-    alignItems: "center",
+  },
+  backText: {
+    fontSize: 24,
   },
   selectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 15,
-    paddingTop: 15,
+    paddingTop: 20,
+    paddingBottom: 5,
   },
   button: {
     padding: 8,

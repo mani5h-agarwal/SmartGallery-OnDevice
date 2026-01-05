@@ -112,7 +112,7 @@ export default function ComparisonScreen({ navigation, route }: Props) {
         <View style={styles.resultsContainer}>
           <View style={styles.resultsHeader}>
             <Text style={styles.resultsCount}>
-              {similarPhotos.length} matches found
+              {similarPhotos.length - 1} matches found
             </Text>
             <View style={styles.matchBadge}>
               <Feather name="percent" size={12} color="#536AF5" />
