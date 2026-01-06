@@ -21,6 +21,7 @@ import { useTheme } from "../context/ThemeContext";
 import { initDB, saveEmbedding } from "../db/embeddings";
 import { getEmbedding } from "../services/embedding";
 import resizeForModel from "../services/resize";
+import { useIndexing } from "../context/IndexingContext";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -41,6 +42,7 @@ export default function AlbumsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processingCamera, setProcessingCamera] = useState(false);
+  const { isIndexing } = useIndexing();
 
   useEffect(() => {
     initDB();
@@ -259,12 +261,17 @@ export default function AlbumsScreen({ navigation }: Props) {
           )}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: isIndexing ? 80 : 10 },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#536AF5"
+              progressBackgroundColor={
+                colorTheme === "light" ? "#ffffff" : "#000000"
+              }
               colors={["#536AF5"]}
             />
           }
@@ -294,7 +301,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 15,
-    paddingBottom: 30,
   },
   albumCard: {
     flexDirection: "row",

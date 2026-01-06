@@ -13,10 +13,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getAllEmbeddings } from "../db/embeddings";
+import {
+  getAllEmbeddings,
+  isUriIndexed,
+  saveEmbedding,
+} from "../db/embeddings";
 import { getEmbedding } from "../services/embedding";
 import resizeForModel from "../services/resize";
 import { cosineSimilarity } from "../services/similarity";
+import { useIndexing } from "../context/IndexingContext";
 
 type PhotoItem = {
   id: string;
@@ -32,6 +37,7 @@ type Props = {
   route: {
     params: {
       uri: string;
+      id?: string; // Optional photo ID for indexing
       embedding?: number[]; // Optional embedding if from camera capture
     };
   };
@@ -42,20 +48,26 @@ const SPACING = 2;
 const PHOTO_SIZE = (width - SPACING * 4) / 3;
 
 export default function ComparisonScreen({ navigation, route }: Props) {
-  const { uri, embedding } = route.params;
+  const { uri, id, embedding } = route.params;
   const [similarPhotos, setSimilarPhotos] = useState<PhotoItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isIndexing } = useIndexing();
 
   useEffect(() => {
     async function findSimilarPhotos() {
       try {
         setLoading(true);
 
-        // Use provided embedding or create one
+        // Auto-index the query image if it's not already indexed
         let queryEmbedding = embedding;
         if (!queryEmbedding) {
           const resized = await resizeForModel(uri);
           queryEmbedding = await getEmbedding(resized);
+
+          // If photo ID is provided and image is not indexed, save it
+          if (id && !isUriIndexed(uri)) {
+            saveEmbedding(id, uri, queryEmbedding);
+          }
         }
 
         const all = await getAllEmbeddings();
@@ -84,7 +96,7 @@ export default function ComparisonScreen({ navigation, route }: Props) {
     }
 
     findSimilarPhotos();
-  }, [uri, embedding]);
+  }, [uri, id, embedding]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -125,7 +137,7 @@ export default function ComparisonScreen({ navigation, route }: Props) {
             numColumns={3}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.gridContent}
+            contentContainerStyle={{ paddingBottom: isIndexing ? 150 : 20 }}
             removeClippedSubviews={true}
             maxToRenderPerBatch={15}
             windowSize={5}
@@ -269,10 +281,6 @@ const styles = StyleSheet.create({
     color: "#536AF5",
     fontSize: 11,
     fontWeight: "600",
-  },
-  gridContent: {
-    // padding: SPACING,
-    paddingBottom: 20,
   },
   photoWrapper: {
     width: PHOTO_SIZE,

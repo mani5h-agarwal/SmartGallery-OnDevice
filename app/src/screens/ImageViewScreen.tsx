@@ -17,6 +17,7 @@ type Props = {
   route: {
     params: {
       uri: string;
+      id?: string;
     };
   };
 };
@@ -24,7 +25,7 @@ type Props = {
 const { width, height } = Dimensions.get("window");
 
 export default function ImageViewScreen({ navigation, route }: Props) {
-  const { uri } = route.params;
+  const { uri, id } = route.params;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -44,7 +45,7 @@ export default function ImageViewScreen({ navigation, route }: Props) {
       <View style={styles.bottom}>
         <TouchableOpacity
           style={styles.similarBtn}
-          onPress={() => navigation.navigate("Comparison", { uri })}
+          onPress={() => navigation.navigate("Comparison", { uri, id })}
         >
           <Text style={styles.similarText}>Find Similar</Text>
         </TouchableOpacity>

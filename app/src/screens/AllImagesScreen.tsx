@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../components/AppHeader";
+import { useIndexing } from "../context/IndexingContext";
 import { useTheme } from "../context/ThemeContext";
 import { getIndexedPhotoIds, initDB, saveEmbedding } from "../db/embeddings";
 import { getEmbedding } from "../services/embedding";
@@ -97,57 +98,6 @@ const SelectionHeader = ({
     </View>
   );
 };
-
-// Upload Progress Component
-const UploadProgress = ({
-  isUploading,
-  uploadedCount,
-  totalToUpload,
-  uploadProgress,
-  colorTheme,
-}: any) => {
-  if (isUploading) {
-    return (
-      <View style={styles.uploadProgressContainer}>
-        <View style={styles.progressTextRow}>
-          <Text
-            style={{
-              color: colorTheme === "light" ? "#444" : "#ccc",
-              fontWeight: "500",
-            }}
-          >
-            Indexing {uploadedCount} of {totalToUpload}
-          </Text>
-          <ActivityIndicator size="small" color="#536AF5" />
-        </View>
-        <View
-          style={[
-            styles.progressBarContainer,
-            { backgroundColor: colorTheme === "light" ? "#e0e0e0" : "#333" },
-          ]}
-        >
-          <View
-            style={[styles.progressBar, { width: `${uploadProgress * 100}%` }]}
-          />
-        </View>
-      </View>
-    );
-  }
-  return (
-    <View style={styles.instructionContainer}>
-      <Text
-        style={{
-          color: colorTheme === "light" ? "#666" : "#999",
-          fontSize: 12,
-          // textAlign: "center",
-        }}
-      >
-        Long press on any photo to select it for indexing
-      </Text>
-    </View>
-  );
-};
-
 export default function AllImagesScreen({ navigation, route }: Props) {
   const albumId = route?.params?.albumId;
   const albumTitle = route?.params?.albumTitle;
@@ -155,12 +105,18 @@ export default function AllImagesScreen({ navigation, route }: Props) {
 
   const { theme: colorTheme, toggleTheme } = useTheme();
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
-  const [indexing, setIndexing] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
-  const [indexProgress, setIndexProgress] = useState({ current: 0, total: 0 });
   const [selectAll, setSelectAll] = useState(false);
   const [processingCamera, setProcessingCamera] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const {
+    isIndexing,
+    progress,
+    startIndexing,
+    updateIndexingProgress,
+    finishIndexing,
+    isCancelRequested,
+  } = useIndexing();
 
   useEffect(() => {
     initDB();
@@ -212,6 +168,13 @@ export default function AllImagesScreen({ navigation, route }: Props) {
   }
 
   const toggleSelectAllHandler = () => {
+    if (isIndexing) {
+      Alert.alert(
+        "Indexing in progress",
+        "Please let the current indexing finish before selecting more images."
+      );
+      return;
+    }
     const unindexedPhotos = photos.filter((p) => !p.indexed);
 
     if (photos.filter((p) => p.selected).length === unindexedPhotos.length) {
@@ -234,10 +197,19 @@ export default function AllImagesScreen({ navigation, route }: Props) {
   async function indexPhotos(photosToIndex: PhotoItem[]) {
     if (photosToIndex.length === 0) return;
 
-    setIndexing(true);
-    setIndexProgress({ current: 0, total: photosToIndex.length });
+    // Prevent overlapping indexing runs
+    if (isIndexing) {
+      return;
+    }
 
+    startIndexing(photosToIndex.length);
+
+    let cancelled = false;
     for (let i = 0; i < photosToIndex.length; i++) {
+      if (isCancelRequested()) {
+        cancelled = true;
+        break;
+      }
       const photo = photosToIndex[i];
       try {
         const resizedDataUri = await resizeForModel(photo.uri);
@@ -249,18 +221,29 @@ export default function AllImagesScreen({ navigation, route }: Props) {
             p.id === photo.id ? { ...p, indexed: true, selected: false } : p
           )
         );
-        setIndexProgress({ current: i + 1, total: photosToIndex.length });
+        updateIndexingProgress(i + 1, photosToIndex.length);
+        if (isCancelRequested()) {
+          cancelled = true;
+          break;
+        }
       } catch (err) {
         console.warn("Indexing failed:", photo.uri, err);
       }
     }
 
-    setIndexing(false);
+    finishIndexing();
     setSelectionMode(false);
     setPhotos((prev) => prev.map((p) => ({ ...p, selected: false })));
   }
 
   function uploadSelectedPhotos() {
+    if (isIndexing) {
+      Alert.alert(
+        "Indexing in progress",
+        "Please let the current indexing finish before selecting more images."
+      );
+      return;
+    }
     const selected = photos.filter((p) => p.selected && !p.indexed);
     cancelSelection();
     indexPhotos(selected);
@@ -272,11 +255,18 @@ export default function AllImagesScreen({ navigation, route }: Props) {
         toggleSelection(photo.id);
       }
     } else {
-      navigation.navigate("ImageView", { uri: photo.uri });
+      navigation.navigate("ImageView", { uri: photo.uri, id: photo.id });
     }
   }
 
   function onLongPress(photo: PhotoItem) {
+    if (isIndexing) {
+      Alert.alert(
+        "Indexing in progress",
+        "Please let the current indexing finish before selecting more images."
+      );
+      return;
+    }
     if (!photo.indexed && !selectionMode) {
       setSelectionMode(true);
       toggleSelection(photo.id);
@@ -379,8 +369,6 @@ export default function AllImagesScreen({ navigation, route }: Props) {
   };
 
   const selectedCount = photos.filter((p) => p.selected).length;
-  const uploadProgress =
-    indexProgress.total > 0 ? indexProgress.current / indexProgress.total : 0;
 
   return (
     <SafeAreaView
@@ -439,16 +427,17 @@ export default function AllImagesScreen({ navigation, route }: Props) {
             onCameraPress={handleCameraPress}
           />
         )}
+        <View style={styles.instructionContainer}>
+          <Text
+            style={{
+              color: colorTheme === "light" ? "#666" : "#999",
+              fontSize: 12,
+            }}
+          >
+            Long press on any photo to select it for indexing
+          </Text>
+        </View>
       </View>
-
-      <UploadProgress
-        isUploading={indexing}
-        uploadedCount={indexProgress.current}
-        totalToUpload={indexProgress.total}
-        uploadProgress={uploadProgress}
-        colorTheme={colorTheme}
-      />
-
       {photos.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#536AF5" />
@@ -502,12 +491,14 @@ export default function AllImagesScreen({ navigation, route }: Props) {
             keyExtractor={(item) => item.id}
             numColumns={3}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: isIndexing ? 150 : 20 }}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                progressBackgroundColor={colorTheme === "light" ? "#ffffff" : "#000000"}
+                progressBackgroundColor={
+                  colorTheme === "light" ? "#ffffff" : "#000000"
+                }
                 colors={["#536AF5"]}
               />
             }
@@ -544,7 +535,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 15,
-    paddingTop: 20,
+    paddingTop: 15,
     paddingBottom: 8,
   },
   albumHeading: {
@@ -565,7 +556,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 15,
-    paddingTop: 20,
+    paddingTop: 15,
     paddingBottom: 5,
   },
   button: {
@@ -577,35 +568,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     marginHorizontal: 10,
-  },
-  uploadProgressContainer: {
-    paddingHorizontal: 15,
-    paddingBottom: 12,
-    height: 32,
-  },
-  progressTextRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  progressBarContainer: {
-    height: 4,
-    borderRadius: 2,
-    width: "100%",
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#536AF5",
-  },
-  instructionContainer: {
-    // alignItems: "center",
-    justifyContent: "center",
-    paddingBottom: 12,
-    paddingHorizontal: 15,
-    height: 32,
-    opacity: 0.7,
   },
   loadingContainer: {
     flex: 1,
@@ -693,5 +655,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "500",
+  },
+  instructionContainer: {
+    justifyContent: "center",
+    paddingHorizontal: 15,
+    height: 25,
+    opacity: 0.7,
   },
 });

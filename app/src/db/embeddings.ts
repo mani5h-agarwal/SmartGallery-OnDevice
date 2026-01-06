@@ -38,3 +38,11 @@ export function getIndexedPhotoIds(): Set<string> {
   const rows = db.getAllSync<{ id: string }>(`SELECT id FROM images`);
   return new Set(rows.map((row) => row.id));
 }
+
+export function isUriIndexed(uri: string): boolean {
+  const result = db.getFirstSync<{ count: number }>(
+    `SELECT COUNT(*) as count FROM images WHERE uri = ?`,
+    [uri]
+  );
+  return result ? result.count > 0 : false;
+}
