@@ -1,69 +1,6 @@
-<div align="center">
+<div align="left">
 
-# SmartGallery
-
-On-device AI photo search and similarity browsing. No cloud. No upload.
-
-</div>
-
-## Overview
-
-SmartGallery indexes your local media library on-device, generates embeddings, and lets you search and browse visually similar photos. It’s private by design: all processing happens on your phone.
-
-## Features
-
-- On-device embeddings for private, offline search
-- Albums and all-photos views with fast scrolling
-- Similarity search and side-by-side compare
-- Local persistence using SQLite for speedy queries
-- Expo + React Native for Android
-
-## Screenshots
-
-<p align="center">
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+1" width="30%" />
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+2" width="30%" />
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+3" width="30%" />
-  <br/>
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+4" width="30%" />
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+5" width="30%" />
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+6" width="30%" />
-  <br/>
-  <sub>Replace these with real app screenshots from your device.</sub>
-  
-</p>
-
-## Tech Stack
-
-- Expo 54, React Native 0.81, React 19
-- Navigation: `@react-navigation/native`, bottom tabs
-- Media: `expo-media-library`, `expo-image-picker`, `expo-image-manipulator`
-- Storage: `expo-sqlite`
-- Animations/UX: `react-native-reanimated`, `react-native-gesture-handler`
-
-## Project Structure
-
-Key paths to explore:
-
-- App entry and routes: [app/index.tsx](app/index.tsx)
-- Navigation: [app/src/navigation/TabNavigator.tsx](app/src/navigation/TabNavigator.tsx)
-- Screens: [app/src/screens](app/src/screens)
-- Context: [app/src/context](app/src/context)
-- Services (media, embedding, similarity): [app/src/services](app/src/services)
-
-## Getting Started
-
-Prerequisites:
-
-- Node.js LTS and npm
-- Android Studio (SDK 36 / Build Tools 36), Xcode for iOS
-- Java 17 (recommended for Gradle 8)
-
-Install dependencies and run in development:
-
-<div align="center">
-
-# SmartGallery
+# SmartGallery🚀
 
 On-device AI photo search and similarity browsing. Private by design.
 
@@ -90,17 +27,19 @@ SmartGallery is a privacy-first photo browser that creates compact visual "finge
 
 ## Screenshots
 
-<p align="center">
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+1" width="30%" />
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+2" width="30%" />
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+3" width="30%" />
-  <br/>
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+4" width="30%" />
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+5" width="30%" />
-  <img src="https://via.placeholder.com/300x620?text=Screenshot+6" width="30%" />
-  <br/>
-  <sub>Replace these placeholders with real app screenshots.</sub>
-</p>
+<div align="center">
+  <table>
+	  <tr>
+      <td><img src="https://github.com/user-attachments/assets/50690c00-992b-4495-b8e0-26262ee6bb00" width="250" /></td>
+      <td><img src="https://github.com/user-attachments/assets/f87df823-1336-4868-9929-7b9233e90917" width="250" /></td>
+      <td><img src="https://github.com/user-attachments/assets/289473a5-ffa7-49a9-9626-7047f1e0e34f" width="250" /></td>
+	  </tr>
+	  <tr>
+      <td><img src="https://github.com/user-attachments/assets/4c444338-f6a5-43c3-8596-fb6a1cdc2dbd" width="250" /></td>
+      <td><img src="https://github.com/user-attachments/assets/f7793836-b2c5-4e83-9eed-d46285557c3e" width="250" /></td>
+    </tr>
+  </table>
+</div>
 
 ## How It Works
 
