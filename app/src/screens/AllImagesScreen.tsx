@@ -125,18 +125,7 @@ export default function AllImagesScreen({ navigation, route }: Props) {
   useEffect(() => {
     async function loadPhotos() {
       try {
-        let assets;
-        if (isAlbumView && albumId) {
-          const result = await MediaLibrary.getAssetsAsync({
-            album: albumId,
-            first: 2000,
-            mediaType: MediaLibrary.MediaType.photo,
-            sortBy: MediaLibrary.SortBy.creationTime,
-          });
-          assets = result.assets;
-        } else {
-          assets = await getPhotos(2000);
-        }
+        const assets = await getPhotos({ albumId });
 
         const indexedIds = getIndexedPhotoIds();
         setPhotos(
@@ -152,7 +141,6 @@ export default function AllImagesScreen({ navigation, route }: Props) {
       }
     }
     loadPhotos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [albumId]);
 
   useEffect(() => {
@@ -277,17 +265,7 @@ export default function AllImagesScreen({ navigation, route }: Props) {
     setRefreshing(true);
     try {
       let assets;
-      if (isAlbumView && albumId) {
-        const result = await MediaLibrary.getAssetsAsync({
-          album: albumId,
-          first: 2000,
-          mediaType: MediaLibrary.MediaType.photo,
-          sortBy: MediaLibrary.SortBy.creationTime,
-        });
-        assets = result.assets;
-      } else {
-        assets = await getPhotos(2000);
-      }
+      assets = await getPhotos({ albumId });
 
       const indexedIds = getIndexedPhotoIds();
       setPhotos(

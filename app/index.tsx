@@ -10,8 +10,8 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <IndexingProvider>
-      <ThemeProvider>
+    <ThemeProvider>
+      <IndexingProvider>
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
@@ -45,7 +45,7 @@ export default function App() {
             }}
           />
         </Stack.Navigator>
-      </ThemeProvider>
-    </IndexingProvider>
+      </IndexingProvider>
+    </ThemeProvider>
   );
 }

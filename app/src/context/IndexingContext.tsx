@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme } from "./ThemeContext";
 
 interface IndexingProgress {
   current: number;
@@ -35,6 +36,7 @@ const IndexingContext = createContext<IndexingContextValue | undefined>(
 export const IndexingProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const { theme } = useTheme();
   const [isIndexing, setIsIndexing] = useState(false);
   const [progress, setProgress] = useState<IndexingProgress>({
     current: 0,
@@ -87,18 +89,51 @@ export const IndexingProvider: React.FC<{ children: React.ReactNode }> = ({
         {children}
         {isIndexing && (
           <View style={styles.overlay} pointerEvents="box-none">
-            <View style={styles.modal} pointerEvents="box-only">
+            <View
+              style={[
+                styles.modal,
+                {
+                  backgroundColor:
+                    theme === "dark"
+                      ? "rgba(0, 0, 0, 0.9)"
+                      : "rgba(255, 255, 255, 0.95)",
+                },
+              ]}
+              pointerEvents="box-only"
+            >
               <View style={styles.progressRow}>
-                <ActivityIndicator size="small" color="#536AF5" />
+                <ActivityIndicator
+                  size="small"
+                  color={theme === "dark" ? "#536AF5" : "#3d4cdb"}
+                />
                 <View style={styles.textBlock}>
-                  <Text style={styles.title}>Indexing photos...</Text>
-                  <Text style={styles.subtitle}>
+                  <Text
+                    style={[
+                      styles.title,
+                      { color: theme === "dark" ? "#fff" : "#000" },
+                    ]}
+                  >
+                    Indexing photos...
+                  </Text>
+                  <Text
+                    style={[
+                      styles.subtitle,
+                      {
+                        color: theme === "dark" ? "#d0d0d0" : "#666",
+                      },
+                    ]}
+                  >
                     {progress.current} / {progress.total}
                   </Text>
                 </View>
               </View>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[
+                  styles.cancelButton,
+                  {
+                    backgroundColor: theme === "dark" ? "#2f2f2f" : "#ecececff",
+                  },
+                ]}
                 onPress={cancelIndexing}
               >
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -164,7 +199,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2f2f2f",
   },
   cancelText: {
-    color: "#ffb3b3",
+    color: "#e74c3c",
     fontWeight: "600",
     fontSize: 14,
   },
